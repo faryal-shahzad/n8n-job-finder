@@ -1,0 +1,242 @@
+{
+  "name": "Job Finder",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4517ac54-62cb-48ad-a6db-9eed6d8b767c",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "url": "https://remotive.com/api/remote-jobs?search=ai&limit=10",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        128,
+        0
+      ],
+      "id": "b86d901c-804c-4c55-bd4c-a255a54714e5",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "jobs",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        256,
+        0
+      ],
+      "id": "0e952c95-ca8d-433d-8506-ffcf65c3f490",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b09711b3-3346-48a0-8eb1-9f5ec280f64d",
+              "leftValue": "={{ $json.candidate_required_location }}",
+              "rightValue": "worldwide",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "ae2ebcde-59b2-47a2-8ee5-52cb4f9be8b4",
+              "leftValue": "={{ $json.candidate_required_location }}",
+              "rightValue": "Pakistan",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "e1503e29-09e3-48ae-93f3-8e803eb0331a",
+              "leftValue": "={{ $json.candidate_required_location }}",
+              "rightValue": "APAC",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "46dbf036-4025-436b-96a4-658ba0c15382",
+              "leftValue": "={{ $json.candidate_required_location }}",
+              "rightValue": "Asia",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        384,
+        0
+      ],
+      "id": "12c6f4cb-9f6b-45f2-9968-6739e1228ff8",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a job-matching assistant. Score how well this remote job fits the candidate.\n\nCANDIDATE\n- Lives in Pakistan; can only take jobs open to Pakistan or worldwide.\n- Experience: Prompt Engineering Instructor (taught 50+ international learners, designed grading rubrics); builds AI agents and automations with the Claude API and Claude Code; AI output evaluation; video and data annotation; Canva content design; 8 years of client-facing project work.\n- Wants: AI trainer, LLM evaluation, AI quality analyst, prompt engineering, data annotation, AI automation or operations, AI content roles.\n- Not a fit: software or ML engineering, sales, jobs needing a CS/STEM degree, a PhD, or native English.\n\nJOB\nTitle: {{ $json.title }}\nCompany: {{ $json.company_name }}\nWho can apply: {{ $json.candidate_required_location }}\nSalary: {{ $json.salary }}\nDescription: {{ $json.description.slice(0, 3000) }}\n\nReply ONLY with JSON in this format:\n{\"score\": 0-10, \"reason\": \"one short sentence\", \"apply\": true or false}",
+        "hasOutputParser": true,
+        "batching": {
+          "batchSize": 4,
+          "delayBetweenBatches": 65000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        512,
+        0
+      ],
+      "id": "2df8b97e-9b2a-4759-91bd-3c39cf9bee45",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.1-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        112
+      ],
+      "id": "95a32042-d99f-47f5-b7c3-53b527afe58f",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "i8mNWxqJJki58FEj",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "  {\"score\": 7, \"reason\": \"Matches her AI evaluation experience\", \"apply\": true}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        112
+      ],
+      "id": "e1ccc85b-cfa8-4842-b57d-9b8f7e8bd84d",
+      "name": "Structured Output Parser"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "fe06de58-a9e6-4dbc-8e3f-9d551f82903f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5214dd2289c0a9c11a61d51c5616c0cacf3db95ddf3ee5e721db934cd054e58f"
+  },
+  "nodeGroups": [],
+  "id": "BvpqUse2kHY3abcW",
+  "tags": []
+}
